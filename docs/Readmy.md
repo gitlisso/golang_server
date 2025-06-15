@@ -76,7 +76,7 @@ golang_server/
 
 1. **Клонирование репозитория:**
 ```bash
-git clone <repository-url>
+git clone https://github.com/gitlisso/golang_server.git
 cd golang_server
 ```
 
@@ -190,6 +190,367 @@ go test ./...
 ### Сборка для production
 ```bash
 GIN_MODE=release go build -o app cmd/server/main.go
+```
+
+## Тестирование API с Postman
+
+### Настройка переменных окружения
+
+Создайте в Postman новое окружение со следующими переменными:
+
+```json
+{
+  "base_url": "http://localhost:8080",
+  "jwt_token": "",
+  "user_id": ""
+}
+```
+
+### Postman коллекция
+
+#### 1. Авторизация
+
+**Регистрация пользователя**
+```
+POST {{base_url}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "email": "test@example.com",
+  "password": "password123"
+}
+```
+
+**Вход в систему**
+```
+POST {{base_url}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+// В Tests добавьте скрипт для сохранения токена:
+pm.test("Save JWT token", function () {
+    var jsonData = pm.response.json();
+    if (jsonData.token) {
+        pm.environment.set("jwt_token", jsonData.token);
+    }
+});
+```
+
+**Выход из системы**
+```
+POST {{base_url}}/api/auth/logout
+Authorization: Bearer {{jwt_token}}
+```
+
+#### 2. Управление задачами
+
+**Получить список задач**
+```
+GET {{base_url}}/api/tasks
+Authorization: Bearer {{jwt_token}}
+
+// С параметрами:
+GET {{base_url}}/api/tasks?status=pending&sort=created_at&order=desc&page=1&limit=10&search=важная
+```
+
+**Создать новую задачу**
+```
+POST {{base_url}}/api/tasks
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "title": "Важная задача",
+  "description": "Описание важной задачи",
+  "status": "pending",
+  "start_date": "2024-01-15T09:00:00Z",
+  "end_date": "2024-01-20T18:00:00Z"
+}
+
+// В Tests добавьте скрипт для сохранения ID задачи:
+pm.test("Save task ID", function () {
+    var jsonData = pm.response.json();
+    if (jsonData.task && jsonData.task.id) {
+        pm.environment.set("task_id", jsonData.task.id);
+    }
+});
+```
+
+**Получить задачу по ID**
+```
+GET {{base_url}}/api/tasks/{{task_id}}
+Authorization: Bearer {{jwt_token}}
+```
+
+**Обновить задачу**
+```
+PUT {{base_url}}/api/tasks/{{task_id}}
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "title": "Обновленная задача",
+  "description": "Обновленное описание",
+  "status": "in_progress",
+  "start_date": "2024-01-15T09:00:00Z",
+  "end_date": "2024-01-22T18:00:00Z"
+}
+```
+
+**Удалить задачу**
+```
+DELETE {{base_url}}/api/tasks/{{task_id}}
+Authorization: Bearer {{jwt_token}}
+```
+
+### Примеры ответов API
+
+**Успешная регистрация (201)**
+```json
+{
+  "message": "Пользователь успешно зарегистрирован",
+  "user": {
+    "id": 1,
+    "username": "testuser",
+    "email": "test@example.com",
+    "created_at": "2024-01-15T12:00:00Z"
+  }
+}
+```
+
+**Успешный вход (200)**
+```json
+{
+  "message": "Успешный вход в систему",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "username": "testuser",
+    "email": "test@example.com"
+  }
+}
+```
+
+**Список задач (200)**
+```json
+{
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Важная задача",
+      "description": "Описание важной задачи",
+      "status": "pending",
+      "start_date": "2024-01-15T09:00:00Z",
+      "end_date": "2024-01-20T18:00:00Z",
+      "user_id": 1,
+      "created_at": "2024-01-15T12:00:00Z",
+      "updated_at": "2024-01-15T12:00:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 1
+  }
+}
+```
+
+**Ошибка авторизации (401)**
+```json
+{
+  "error": "Необходима авторизация"
+}
+```
+
+**Ошибка валидации (400)**
+```json
+{
+  "error": "Ошибка валидации",
+  "details": [
+    "Поле 'title' обязательно для заполнения"
+  ]
+}
+```
+
+### Коллекция Postman (JSON)
+
+Скопируйте и импортируйте следующую коллекцию:
+
+```json
+{
+  "info": {
+    "name": "Todo App API",
+    "description": "REST API для управления задачами",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Save JWT token\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.token) {",
+                  "        pm.environment.set(\"jwt_token\", jsonData.token);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "Get Tasks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/tasks",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tasks"]
+            }
+          }
+        },
+        {
+          "name": "Create Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Save task ID\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.task && jsonData.task.id) {",
+                  "        pm.environment.set(\"task_id\", jsonData.task.id);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Важная задача\",\n  \"description\": \"Описание важной задачи\",\n  \"status\": \"pending\",\n  \"start_date\": \"2024-01-15T09:00:00Z\",\n  \"end_date\": \"2024-01-20T18:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/tasks",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tasks"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Инструкции по импорту
+
+1. Откройте Postman
+2. Нажмите "Import" в верхней части интерфейса
+3. Вставьте JSON коллекции выше или создайте файл `.json`
+4. Настройте переменные окружения
+5. Запустите сервер: `go run cmd/server/main.go`
+6. Начните тестирование с регистрации пользователя
+
+### Автоматические тесты
+
+Добавьте в каждый запрос следующие тесты:
+
+```javascript
+// Проверка статуса ответа
+pm.test("Status code is 200", function () {
+    pm.response.to.have.status(200);
+});
+
+// Проверка формата JSON
+pm.test("Response is JSON", function () {
+    pm.response.to.be.json;
+});
+
+// Проверка времени ответа
+pm.test("Response time is less than 500ms", function () {
+    pm.expect(pm.response.responseTime).to.be.below(500);
+});
 ```
 
 ## Дополнительные возможности
