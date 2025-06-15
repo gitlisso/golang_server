@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"golang_server/internal/config"
 	"golang_server/internal/database"
@@ -71,4 +70,4 @@ func main() {
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
-} 
+}

@@ -2,10 +2,12 @@ package database
 
 import (
 	"golang_server/internal/models"
-	
+
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+
+	_ "modernc.org/sqlite"
 )
 
 // Init инициализирует подключение к базе данных
@@ -15,8 +17,11 @@ func Init(databasePath string) (*gorm.DB, error) {
 		Logger: logger.Default.LogMode(logger.Info),
 	}
 
-	// Подключаемся к SQLite
-	db, err := gorm.Open(sqlite.Open(databasePath), config)
+	// Подключаемся к SQLite с modernc.org/sqlite драйвером
+	db, err := gorm.Open(sqlite.Dialector{
+		DriverName: "sqlite",
+		DSN:        databasePath,
+	}, config)
 	if err != nil {
 		return nil, err
 	}
@@ -36,4 +41,4 @@ func Init(databasePath string) (*gorm.DB, error) {
 // GetDB возвращает экземпляр базы данных
 func GetDB(db *gorm.DB) *gorm.DB {
 	return db
-} 
+}
